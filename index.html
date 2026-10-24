@@ -46,6 +46,20 @@ td .nm{width:100%;min-width:140px;text-align:left;border-color:transparent;backg
 dialog{border:0;border-radius:14px;box-shadow:var(--sh);max-width:480px;width:92%;background:var(--card);color:var(--fg)}
 dialog label{display:block;margin:8px 0 2px;font-size:12px;color:var(--mut)}dialog input:not([type=checkbox]){width:100%}
 details{font-size:13px;margin:8px 0}
+table:not(.nnon) .nn{display:none}
+#ph{display:none}
+@media print{
+:root{--bg:#fff;--card:#fff;--fg:#1c2433;--mut:#555;--line:#cfd6e0;--acc:#2563eb;--ok:#047857;--okb:#d1fae5;--warn:#92400e;--warnb:#fef3c7;--over:#b91c1c;--overb:#fee2e2;--sh:none}
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+header,.np,#empty,#conf,.dc{display:none!important}
+#ph{display:block;margin-bottom:10px}
+main{padding:0;max-width:none}.card{box-shadow:none;padding:0}
+table{min-width:0;font-size:12px}
+td input,td select{border:0;background:transparent;appearance:none;-webkit-appearance:none;padding:0;text-align:center}
+td .nm{text-align:left;min-width:0}
+td input[type=number]{width:44px}
+td input[type=number]::-webkit-inner-spin-button{display:none}
+}
 </style>
 </head>
 <body>
@@ -62,7 +76,7 @@ details{font-size:13px;margin:8px 0}
     <div class="row" style="margin-top:8px"><button id="useRemote">GitHubの内容を読み込む（この端末の変更は捨てる）</button><button id="useLocal">この端末の内容で上書きする</button></div>
   </div>
 
-  <div class="card row">
+  <div class="card row np">
     <div class="chips" id="chips"></div><span class="sp"></span>
     <input id="alias" placeholder="呼び名（例: Iさん）" maxlength="12" style="width:150px">
     <button id="add" class="pri">生徒を追加</button>
@@ -76,20 +90,26 @@ details{font-size:13px;margin:8px 0}
       <div class="tile ok"><b id="n-g">0</b>余裕あり</div>
     </div>
     <div class="card">
-      <div class="row" style="margin-bottom:10px">
+      <div class="row np" style="margin-bottom:10px">
         <label>適用区分 <select id="type"><option value="5">一般（1/5）</option><option value="3">特例（1/3）</option></select></label>
+        <label id="g3wrap" hidden><input type="checkbox" id="g3"> S3（3学期の卒業追認を表示）</label>
         <span class="mut" id="upd"></span><span class="sp"></span>
         <button id="del">この生徒を削除</button>
       </div>
+      <div class="row np" style="margin-bottom:10px">
+        <input id="pname" placeholder="資料に表示する名前（保存されません）" style="width:270px">
+        <button id="print" class="pri">資料を出力（PDF）</button>
+      </div>
+      <div id="ph"><h2 style="margin:0 0 4px;font-size:18px">欠課時数の状況</h2><div>名前: <b id="pn"></b>　／　区分: <span id="pt"></span>　／　作成日: <span id="pd"></span></div></div>
       <div class="wrap"><table>
-        <thead><tr><th>科目</th><th>単位数</th><th>授業時数</th><th>出席時数</th><th>欠課時数</th><th>1学期</th><th>2学期まで</th><th>学年</th><th></th></tr></thead>
+        <thead><tr><th>科目</th><th>単位数</th><th>授業時数</th><th>出席時数</th><th>欠課時数</th><th>1学期</th><th>2学期まで</th><th>学年</th><th class="nn">3学期の<br>追加受講</th><th class="dc"></th></tr></thead>
         <tbody id="tb"></tbody>
       </table></div>
-      <div class="row" style="margin-top:10px"><button id="addrow">科目を追加</button><span class="sp"></span>
+      <div class="row np" style="margin-top:10px"><button id="addrow">科目を追加</button><span class="sp"></span>
         <button id="exp">バックアップを書き出す</button><button id="imp">読み込む</button><input id="file" type="file" accept=".json" hidden></div>
     </div>
   </div>
-  <p class="note">基準値は〔付表２〕高等学校生適用欠課時数早見表（1学期13週／2学期まで27週／学年35週）の「超えた欠課時数」です。欠課時数がその数字以上になると単位不認定です。「あと◯時間」は基準の1時間手前まで欠課できる残り時間です（0時間＝あと1時間で不認定）。色: 緑＝余裕 / 黄＝残り2時間以内 / 赤＝超過。バックアップのファイルには呼び名が入るので、公開リポジトリにはアップロードしないでください。</p>
+  <p class="note">基準値は〔付表２〕高等学校生適用欠課時数早見表（1学期13週／2学期まで27週／学年35週）の「超えた欠課時数」です。欠課時数がその数字以上になると単位不認定です。「あと◯時間」は基準の1時間手前まで欠課できる残り時間です（0時間＝あと1時間で不認定）。色: 緑＝余裕 / 黄＝残り2時間以内 / 赤＝超過。<span class="np">バックアップのファイルには呼び名が入るので、公開リポジトリにはアップロードしないでください。</span></p>
 </main>
 
 <dialog id="dlg">
@@ -207,6 +227,8 @@ function judge(F,c,type,k){
 function calc(){
   const s=cur(); if(!s)return;
   let o=0,w=0,g=0;
+  $('#g3wrap').hidden=s.type!=3; $('#g3').checked=!!s.g3;
+  $('#tb').closest('table').classList.toggle('nnon',s.type==3&&!!s.g3);
   document.querySelectorAll('#tb tr').forEach(tr=>{
     const r=s.rows[tr.dataset.i], c=tr.children;
     const has=r.d!==''&&r.e!=='', bad=has&&+r.e>+r.d, F=has?r.d-r.e:null;
@@ -220,24 +242,29 @@ function calc(){
       cell.innerHTML='<b>'+(j.cls==='over'?'超過':'あと'+j.rem+'時間')+'</b><small>基準 '+j.thr+'</small><span class="bar"><i style="width:'+j.pct+'%"></i></span>';
       worst=Math.max(worst,j.cls==='over'?2:j.cls==='warn'?1:0);
     }
+    const nn=c[8];
+    if(has&&!bad){const j=judge(F,r.c,3,1);nn.className='r nn '+(j.rem<0?'over':'ok');nn.innerHTML=j.rem<0?'<b>追加受講 '+(-j.rem)+'時間</b>':'<b>不要</b>'}
+    else{nn.className='r nn';nn.innerHTML='<small>–</small>'}
     if(worst===2)o++;else if(worst===1)w++;else if(worst===0)g++;
   });
   $('#n-o').textContent=o;$('#n-w').textContent=w;$('#n-g').textContent=g;
   $('#upd').textContent='最終更新: '+new Date(s.upd).toLocaleString('ja-JP');
 }
+let lastCur=null;
 function render(){
   $('#chips').innerHTML=S.students.map(s=>'<button class="chip'+(s.id===S.cur?' on':'')+'" data-id="'+s.id+'">'+esc(s.alias)+'</button>').join('');
   const s=cur();
   $('#main').hidden=!s; $('#empty').hidden=!!s;
   if(!s)return;
+  if(s.id!==lastCur){$('#pname').value='';lastCur=s.id}
   $('#type').value=s.type;
   $('#tb').innerHTML=s.rows.map((r,i)=>
     '<tr data-i="'+i+'"><td><input class="nm" data-f="n" value="'+esc(r.n)+'"></td>'+
     '<td><select data-f="c">'+[1,2,3,4,5,6,7,8].map(n=>'<option'+(n===r.c?' selected':'')+'>'+n+'</option>').join('')+'</select></td>'+
     '<td><input type="number" min="0" data-f="d" value="'+esc(r.d)+'"></td>'+
     '<td><input type="number" min="0" data-f="e" value="'+esc(r.e)+'"></td>'+
-    '<td class="f"></td><td class="r"></td><td class="r"></td><td class="r"></td>'+
-    '<td><button data-act="del" title="この科目を削除">×</button></td></tr>').join('');
+    '<td class="f"></td><td class="r"></td><td class="r"></td><td class="r"></td><td class="r nn"></td>'+
+    '<td class="dc"><button data-act="del" title="この科目を削除">×</button></td></tr>').join('');
   calc();
 }
 $('#chips').onclick=e=>{const id=e.target.dataset.id;if(id){S.cur=id;saveLocal();render()}};
@@ -262,6 +289,14 @@ $('#del').onclick=()=>{
   S.students=S.students.filter(x=>x.id!==s.id); S.cur=S.students.length?S.students[0].id:null; save(); render();
 };
 $('#type').onchange=e=>{const s=cur();s.type=+e.target.value;s.upd=Date.now();save();calc()};
+$('#g3').onchange=e=>{const s=cur();s.g3=e.target.checked;s.upd=Date.now();save();calc()};
+$('#print').onclick=()=>{
+  const s=cur(); if(!s)return;
+  $('#pn').textContent=$('#pname').value.trim()||s.alias;
+  $('#pt').textContent=s.type==3?'特例（1/3）':'一般（1/5）';
+  $('#pd').textContent=new Date().toLocaleDateString('ja-JP');
+  window.print();
+};
 $('#addrow').onclick=()=>{cur().rows.push({n:'新しい科目',c:1,d:'',e:''});save();render()};
 $('#exp').onclick=()=>{
   const a=document.createElement('a');
