@@ -6,11 +6,11 @@
 <title>欠課時数チェック</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%232563eb'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='white' stroke-width='5'/%3E%3Cpath d='M32 21v12l8 5' fill='none' stroke='white' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
-:root{--bg:#eef2f8;--card:#fff;--fg:#1c2433;--mut:#667085;--line:#e3e8f0;--acc:#2563eb;--ok:#047857;--okb:#d1fae5;--warn:#92400e;--warnb:#fef3c7;--over:#b91c1c;--overb:#fee2e2;--sh:0 1px 3px rgba(16,24,40,.08),0 6px 18px rgba(16,24,40,.06)}
-@media(prefers-color-scheme:dark){:root{--bg:#0b1220;--card:#131c2e;--fg:#e6ecf5;--mut:#93a0b8;--line:#243049;--acc:#60a5fa;--ok:#6ee7b7;--okb:#0f2e25;--warn:#fcd34d;--warnb:#33290d;--over:#fca5a5;--overb:#381518}}
+:root{--bg:#eef2f8;--card:#fff;--fg:#1c2433;--mut:#667085;--line:#e3e8f0;--acc:#2563eb;--ok:#047857;--okb:#d1fae5;--warn:#92400e;--warnb:#fef3c7;--over:#b91c1c;--overb:#fee2e2;--hb1:#eef4ff;--hb2:#e0ebfd;--hfg:#1e3a5f;--sh:0 1px 3px rgba(16,24,40,.08),0 6px 18px rgba(16,24,40,.06)}
+@media(prefers-color-scheme:dark){:root{--bg:#0b1220;--card:#131c2e;--fg:#e6ecf5;--mut:#93a0b8;--line:#243049;--acc:#60a5fa;--ok:#6ee7b7;--okb:#0f2e25;--warn:#fcd34d;--warnb:#33290d;--over:#fca5a5;--overb:#381518;--hb1:#17233b;--hb2:#1c2b48;--hfg:#dbe7ff}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 system-ui,"Hiragino Sans","Yu Gothic",sans-serif}
-header{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:14px 16px}
+header{background:linear-gradient(135deg,var(--hb1),var(--hb2));color:var(--hfg);border-bottom:1px solid var(--line);padding:14px 16px}
 .hd{max-width:1000px;margin:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .logo{width:40px;height:40px}
 h1{font-size:19px;margin:0;line-height:1.2}.sub{font-size:12px;opacity:.85}
@@ -20,12 +20,13 @@ main{max-width:1000px;margin:auto;padding:16px}
 .mut,small{color:var(--mut);font-size:12px}
 input,select,button{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 button{cursor:pointer}button:hover{border-color:var(--acc)}
-.pri{background:var(--acc);border-color:var(--acc);color:#fff}.ghost{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.4);color:#fff}
-.pill{border-radius:99px;font-size:12px;padding:4px 12px;border:0;color:#fff}
-.pill.off{background:#64748b}.pill.busy{background:#0ea5e9}.pill.ok{background:#059669}.pill.dirty,.pill.conf{background:#d97706}.pill.err{background:#dc2626}
+.pri{background:color-mix(in srgb,var(--acc) 12%,var(--card));border-color:color-mix(in srgb,var(--acc) 35%,var(--card));color:var(--acc);font-weight:600}.ghost{background:var(--card);border-color:var(--line);color:var(--fg)}
+.pill{border-radius:99px;font-size:12px;font-weight:600;padding:4px 12px;border:1px solid rgba(0,0,0,.08)}
+.pill.off{background:#e5e7eb;color:#374151}.pill.busy{background:#e0f2fe;color:#075985}.pill.ok{background:#dcfce7;color:#166534}.pill.dirty,.pill.conf{background:#fef3c7;color:#92400e}.pill.err{background:#fee2e2;color:#991b1b}
+@media(prefers-color-scheme:dark){.pill.off{background:#334155;color:#e2e8f0}.pill.busy{background:#0c4a6e;color:#bae6fd}.pill.ok{background:#14532d;color:#bbf7d0}.pill.dirty,.pill.conf{background:#451a03;color:#fde68a}.pill.err{background:#450a0a;color:#fecaca}}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{border-radius:99px;padding:6px 16px;font-weight:600}
-.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.chip.on{background:color-mix(in srgb,var(--acc) 14%,var(--card));border-color:var(--acc);color:var(--acc)}
 .banner{background:var(--warnb);color:var(--warn);border-radius:12px;padding:12px;margin-bottom:14px}
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
 .tile{border-radius:12px;padding:10px;text-align:center;font-size:12px}
@@ -49,7 +50,7 @@ details{font-size:13px;margin:8px 0}
 </head>
 <body>
 <header><div class="hd">
-  <svg class="logo" viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="#fff" fill-opacity=".2"/><circle cx="32" cy="32" r="18" fill="none" stroke="#fff" stroke-width="5"/><path d="M32 21v12l8 5" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <svg class="logo" viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="#2563eb"/><circle cx="32" cy="32" r="18" fill="none" stroke="#fff" stroke-width="5"/><path d="M32 21v12l8 5" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
   <div><h1>欠課時数チェック</h1><div class="sub">今日: <span id="today"></span></div></div>
   <span class="sp"></span>
   <button id="pill" class="pill off">GitHub未接続</button>
