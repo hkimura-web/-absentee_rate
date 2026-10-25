@@ -94,7 +94,7 @@ td input[type=number]::-webkit-inner-spin-button{display:none}
       <div class="row np" style="margin-bottom:10px">
         <label>適用区分 <select id="type"><option value="5">一般（1/5）</option><option value="3">特例（1/3）</option></select></label>
         <label id="g3wrap" hidden><input type="checkbox" id="g3"> S3（3学期の卒業追認を表示）</label>
-        <span class="mut" id="upd"></span><span class="sp"></span>
+        <span class="mut" id="cug"></span><span class="mut" id="upd"></span><span class="sp"></span>
         <button id="del">この生徒を削除</button>
       </div>
       <div class="row np" style="margin-bottom:10px">
@@ -108,6 +108,10 @@ td input[type=number]::-webkit-inner-spin-button{display:none}
       </table></div>
       <div class="row np" style="margin-top:10px"><button id="pick" class="pri">科目を選ぶ</button><button id="csvin">CSV・貼り付けで取り込む</button><button id="csvout">CSVで書き出す</button><button id="addrow">科目を1つ追加</button><span class="sp"></span>
         <button id="exp">バックアップを書き出す</button><button id="imp">読み込む</button><input id="file" type="file" accept=".json" hidden></div>
+    </div>
+    <div class="card np" id="hist" hidden>
+      <b>過去の学年の記録</b> <small>学年を変えたときに、それまでの時数が自動で保存されます</small>
+      <div id="histl"></div>
     </div>
   </div>
   <p class="note">基準値は〔付表２〕高等学校生適用欠課時数早見表（1学期13週／2学期まで27週／学年35週）の「超えた欠課時数」です。欠課時数がその数字以上になると単位不認定です。「あと◯時間」は基準の1時間手前まで欠課できる残り時間です（0時間＝あと1時間で不認定）。色: 緑＝余裕 / 黄＝残り2時間以内 / 赤＝超過。<span class="np">バックアップのファイルには呼び名が入るので、公開リポジトリにはアップロードしないでください。</span></p>
@@ -127,10 +131,13 @@ td input[type=number]::-webkit-inner-spin-button{display:none}
 </dialog>
 
 <dialog id="pkd">
-  <h3 style="margin-top:0">この生徒の科目を選ぶ</h3>
-  <p class="note">取っている科目にチェックを入れてください。一覧にない科目は下で追加できます（次の生徒からも使えます）。</p>
-  <div id="pkl" style="max-height:44vh;overflow:auto"></div>
-  <div class="row" style="margin-top:8px"><input id="pkn" placeholder="新しい科目名" style="width:auto;flex:1"><select id="pkc"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option></select><button id="pka">一覧に追加</button></div>
+  <h3 style="margin-top:0">履修科目を選ぶ</h3>
+  <div class="row">
+    <label style="margin:0;font-size:inherit;color:inherit">課程 <select id="pkcu"></select></label>
+    <label style="margin:0;font-size:inherit;color:inherit">学年 <select id="pkgr"><option value="1">1年</option><option value="2">2年</option><option value="3">3年</option></select></label>
+  </div>
+  <p class="note" id="pknote"></p>
+  <div id="pkl" style="max-height:48vh;overflow:auto"></div>
   <div class="row" style="margin-top:12px"><button id="pkok" class="pri">この内容にする</button><span class="sp"></span><button id="pkx">閉じる</button></div>
 </dialog>
 
@@ -245,6 +252,7 @@ function judge(F,c,type,k){
 function calc(){
   const s=cur(); if(!s)return;
   let o=0,w=0,g=0;
+  $('#cug').textContent=s.cu?CU[s.cu].n+'・'+s.gr+'年':'';
   $('#g3wrap').hidden=s.type!=3; $('#g3').checked=!!s.g3;
   $('#tb').closest('table').classList.toggle('nnon',s.type==3&&!!s.g3);
   document.querySelectorAll('#tb tr').forEach(tr=>{
@@ -285,7 +293,7 @@ function render(){
     '<td class="f"></td><td class="r"></td><td class="r"></td><td class="r"></td><td class="r nn"></td>'+
     '<td class="dc"><button data-act="del" title="この科目を削除">×</button></td></tr>').join('');
   if(!s.rows.length)$('#tb').innerHTML='<tr><td colspan="9" class="mut" style="padding:18px">科目がありません。下の「科目を選ぶ」か「CSV・貼り付けで取り込む」から追加してください。</td></tr>';
-  calc();
+  calc();renderHist();
 }
 $('#chips').onclick=e=>{const id=e.target.dataset.id;if(id){S.cur=id;saveLocal();render()}};
 $('#tb').addEventListener('input',e=>{
@@ -313,37 +321,100 @@ $('#g3').onchange=e=>{const s=cur();s.g3=e.target.checked;s.upd=Date.now();save(
 $('#print').onclick=()=>{
   const s=cur(); if(!s)return;
   $('#pn').textContent=$('#pname').value.trim()||s.alias;
-  $('#pt').textContent=s.type==3?'特例（1/3）':'一般（1/5）';
+  $('#pt').textContent=(s.cu?CU[s.cu].n+' '+s.gr+'年 ／ ':'')+(s.type==3?'特例（1/3）':'一般（1/5）');
   $('#pd').textContent=new Date().toLocaleDateString('ja-JP');
   window.print();
 };
-// ---- 科目の選択・CSV ----
-let pkSel=new Set();
-function renderPk(){
-  $('#pkl').innerHTML=S.master.map((m,i)=>'<div class="row" style="padding:2px 0"><label class="row" style="flex:1;gap:6px;margin:0;font-size:inherit;color:inherit"><input type="checkbox" data-n="'+esc(m.n)+'"'+(pkSel.has(m.n)?' checked':'')+'><span>'+esc(m.n)+'</span><small>'+m.c+'単位</small></label><button data-del="'+i+'" title="一覧から削除">×</button></div>').join('');
+/*CU-START*/
+const G1='R:現代の国語2,言語文化2,地理総合2,歴史総合2,数学Ⅰ3,数学A2,物理基礎2,化学基礎2,生物基礎2,体育2,保健1,英語コミュニケーションⅠ4,論理・表現Ⅰ2,家庭基礎2,聖書1,LHR1,総合的な探究の時間1';
+const R2='公共2,体育2,保健1,英語コミュニケーションⅡ4,論理・表現Ⅱ2,情報Ⅰ2,聖書1,LHR1,総合的な探究の時間1';
+const A2='A:音楽Ⅰ2,美術Ⅰ2,書道Ⅰ2';
+const E2='2:地理探究4,日本史探究4,世界史探究4,数学Ⅱ（文系）4,物理4,生物4,英語特講α4;3:数学B（文系）3,数学ⅠA特講α3,化学4,英語特講β4';
+const R3='体育3,英語コミュニケーションⅢ4,論理・表現Ⅲ2,聖書1,LHR1,総合的な探究の時間1';
+const E3='2:地理特講4,地理演習2,日本史特講4,日本史演習2,世界史特講4,世界史演習2,倫理2,政治・経済（文）4,数学C2,数学Ⅲ特講2,物理特講演習4,生物特講演習4;3:現代文特講2,古典特講2,政治・経済（理）2,公民科演習2,数学C（文系）2,数学ⅠA特講γ2,数学BC特講β2,化学特講演習4,プログラミング講座2';
+const N1='選択①②③は、それぞれ目安の単位数になるように選びます（目安と違うと「要確認」と出ます）。芸術は1つ選びます。';
+const CU={
+ a25:{n:'一般 2025年度入学〜',note:N1,x:{2:{1:[6],2:[4],3:[3,4],A:[2]},3:{1:[6],2:[6],3:[2,4]}},g:{
+  1:G1,
+  2:'R:論理国語2,'+R2+';'+A2+';1:文学国語3,古典探究3,数学Ⅱ（理系）4,数学B（理系）2;'+E2,
+  3:'R:論理国語2,'+R3+';1:国語演習Ⅰ2,国語演習Ⅱ2,数学Ⅲ4,数学C（理系）2,数学ⅡB特講2,数学ⅠA特講β4,英語演習2;'+E3}},
+ a24:{n:'一般 2024年度入学',note:N1,x:{2:{1:[6],2:[4],3:[3,4],A:[2]},3:{1:[6],2:[6],3:[2,4]}},g:{
+  1:G1,
+  2:'R:論理国語2,'+R2+';'+A2+';1:文学国語4,古典探究2,数学Ⅱ（理系）4,数学B（理系）2;'+E2,
+  3:'R:論理国語2,'+R3+';1:古典探究2,国語演習2,数学Ⅲ4,数学C（理系）2,数学ⅡB特講2,数学ⅠA特講β4,英語演習2;'+E3}},
+ gle:{n:'GLEクラス',note:'3年の●の科目（数学Ⅱ・数学B・Global Issues・多文化・多言語理解）は、1科目または2科目を必ず選びます。数学Ⅱと数学Bは同時に選びます。',x:{},g:{
+  1:'R:現代の国語2,言語文化2,論理言語力1,地理総合2,数学Ⅰ2,数学A2,科学と人間生活2,生物基礎2,体育2,保健1,英語コミュニケーションⅠ3,GLEⅠ4,English Communication SELF1,IELTS prepⅠ1,家庭基礎2,聖書1,LHR1,アカデミックラボⅠ2',
+  2:'R:小論文Ⅰ2,総合国語2,歴史総合2,公共2,Global Issues1,体育2,保健1,音楽Ⅰ2,英語コミュニケーションⅡ4,GLEⅡ4,English Communication SELF1,IELTS prepⅡ2,情報Ⅰ2,聖書1,LHR1,アカデミックラボⅡ3',
+  3:'R:小論文Ⅱ2,Global Events3,体育3,英語コミュニケーションⅢ4,GLEⅢ4,English Communication SELF1,IELTS prepⅢ1,聖書1,LHR1,アカデミックラボⅢ4,キャリアプランニング2;S:数学Ⅱ4,数学B2,Global Issues2,多文化・多言語理解2'}}
+};
+const GN={R:'必修',A:'芸術（1つ選ぶ）',1:'選択①',2:'選択②',3:'選択③',S:'必選（●）'};
+const parseG=t=>t.split(';').flatMap(sec=>{const k=sec.indexOf(':'),g=sec.slice(0,k);return sec.slice(k+1).split(',').map(x=>{const m=x.match(/^(.*?)(\d)$/);return{g,n:m[1],c:+m[2]}})});
+/*CU-END*/
+function renderHist(){
+  const s=cur(),H=(s&&s.hist)||[];
+  $('#hist').hidden=!H.length;if(!H.length)return;
+  $('#histl').innerHTML=H.map((h,i)=>({h,i})).reverse().map(({h,i})=>{
+    const t=(h.cu&&CU[h.cu]?CU[h.cu].n+'・'+h.gr+'年':'課程未設定')+'（保存: '+new Date(h.at).toLocaleDateString('ja-JP')+'）';
+    const rows=h.rows.map(r=>{
+      const has=r.d!==''&&r.e!=='',F=has?r.d-r.e:null;let res='–';
+      if(has&&F>=0){const j=judge(F,r.c,h.type||5,2);res=j.cls==='over'?'超過':'あと'+j.rem+'時間'}
+      return '<tr><td style="text-align:left">'+esc(r.n)+'</td><td>'+r.c+'</td><td>'+esc(r.d)+'</td><td>'+esc(r.e)+'</td><td>'+(has?F:'–')+'</td><td>'+res+'</td></tr>';
+    }).join('');
+    return '<details style="margin-top:8px"><summary><b>'+esc(t)+'</b></summary><div class="wrap"><table style="min-width:520px"><thead><tr><th>科目</th><th>単位</th><th>授業</th><th>出席</th><th>欠課</th><th>学年の残り</th></tr></thead><tbody>'+rows+'</tbody></table></div><button data-hd="'+i+'" style="margin-top:6px">この記録を削除</button></details>';
+  }).join('');
 }
-function pkOpen(){const s=cur();if(!s)return;pkSel=new Set(s.rows.map(r=>r.n));renderPk();$('#pkd').showModal()}
+$('#histl').addEventListener('click',e=>{
+  const i=e.target.dataset.hd;if(i===undefined)return;
+  const s=cur();if(confirm('この記録を削除しますか？（元に戻せません）')){s.hist.splice(+i,1);save();renderHist()}
+});
+let pkSel=new Set(),pkCu='a25',pkGr=1;
+const listG=()=>parseG(CU[pkCu].g[pkGr]);
+const reqSet=()=>new Set(listG().filter(x=>x.g==='R').map(x=>x.n));
+function renderPk(){
+  const L=listG(), X=CU[pkCu].x[pkGr]||{};
+  let h='';
+  ['R','A','1','2','3','S'].forEach(g=>{
+    const it=L.filter(x=>x.g===g);if(!it.length)return;
+    const sum=it.filter(x=>pkSel.has(x.n)).reduce((t,x)=>t+x.c,0), ex=X[g];
+    h+='<div style="margin-top:12px"><b>'+GN[g]+'</b> <small>合計 '+sum+'単位'+(ex?'（目安 '+ex.join('または')+'）':'')+'</small>'+
+      (ex?(ex.includes(sum)?' <span class="ok" style="padding:1px 8px;border-radius:99px;font-size:12px">OK</span>':' <span class="warn" style="padding:1px 8px;border-radius:99px;font-size:12px">要確認</span>'):'')+'</div>';
+    it.forEach(x=>{h+='<label class="row" style="gap:6px;margin:0;padding:2px 0;font-size:inherit;color:inherit"><input type="checkbox" data-n="'+esc(x.n)+'"'+(pkSel.has(x.n)?' checked':'')+'><span>'+esc(x.n)+'</span><small>'+x.c+'単位</small></label>'});
+  });
+  $('#pkl').innerHTML=h;
+}
+function pkChg(){
+  const s=cur();pkCu=$('#pkcu').value;pkGr=+$('#pkgr').value;
+  pkSel=(s.cu===pkCu&&s.gr===pkGr)?new Set(s.rows.map(r=>r.n)):reqSet();
+  $('#pknote').textContent=CU[pkCu].note;renderPk();
+}
+function pkOpen(){
+  const s=cur();if(!s)return;
+  $('#pkcu').innerHTML=Object.keys(CU).map(k=>'<option value="'+k+'">'+CU[k].n+'</option>').join('');
+  $('#pkcu').value=s.cu||'a25';$('#pkgr').value=s.gr||1;
+  pkChg();
+  if(!s.cu)pkSel=reqSet(),renderPk();
+  $('#pkd').showModal();
+}
 $('#pick').onclick=pkOpen;
 $('#pkx').onclick=()=>$('#pkd').close();
-$('#pkl').addEventListener('change',e=>{const n=e.target.dataset.n;if(n!==undefined){e.target.checked?pkSel.add(n):pkSel.delete(n)}});
-$('#pkl').addEventListener('click',e=>{
-  const i=e.target.dataset.del;if(i===undefined)return;
-  const m=S.master[+i];
-  if(confirm('「'+m.n+'」を一覧から削除しますか？（すでに生徒に入っている科目は消えません）')){pkSel.delete(m.n);S.master.splice(+i,1);save();renderPk()}
+$('#pkcu').onchange=$('#pkgr').onchange=pkChg;
+$('#pkl').addEventListener('change',e=>{
+  const n=e.target.dataset.n;if(n===undefined)return;
+  const on=e.target.checked;on?pkSel.add(n):pkSel.delete(n);
+  if(pkCu==='gle'&&(n==='数学Ⅱ'||n==='数学B')){const o=n==='数学Ⅱ'?'数学B':'数学Ⅱ';on?pkSel.add(o):pkSel.delete(o)}
+  renderPk();
 });
-$('#pka').onclick=()=>{
-  const n=$('#pkn').value.trim();if(!n)return;
-  if(!S.master.some(m=>m.n===n)){S.master.push({n,c:+$('#pkc').value});save()}
-  pkSel.add(n);$('#pkn').value='';renderPk();
-};
 $('#pkok').onclick=()=>{
-  const s=cur(),inM=r=>S.master.some(m=>m.n===r.n);
-  const rm=s.rows.filter(r=>inM(r)&&!pkSel.has(r.n)), withData=rm.filter(r=>r.d!==''||r.e!=='');
-  if(withData.length&&!confirm('時数が入っている科目（'+withData.map(r=>r.n).join('、')+'）が外れます。よろしいですか？'))return;
-  const ord=[];
-  S.master.forEach(m=>{if(pkSel.has(m.n))ord.push(s.rows.find(r=>r.n===m.n)||{n:m.n,c:m.c,d:'',e:''})});
-  s.rows=ord.concat(s.rows.filter(r=>!inM(r)));
-  s.upd=Date.now();save();render();$('#pkd').close();
+  const s=cur(),L=listG(),names=new Set(L.map(x=>x.n)),same=s.cu===pkCu&&s.gr===pkGr;
+  const hasData=r=>r.d!==''||r.e!=='';
+  if(!same&&s.rows.some(hasData)&&!confirm('課程・学年が変わります。いまの記録は「過去の学年の記録」に保存され、時数は空に戻ります。よろしいですか？'))return;
+  if(same){const rm=s.rows.filter(r=>names.has(r.n)&&!pkSel.has(r.n)&&hasData(r));
+    if(rm.length&&!confirm('時数が入っている科目（'+rm.map(r=>r.n).join('、')+'）が外れます。よろしいですか？'))return}
+  if(!same&&s.rows.some(hasData))(s.hist=s.hist||[]).push({cu:s.cu||'',gr:s.gr||0,type:s.type,at:Date.now(),rows:s.rows.map(r=>({n:r.n,c:r.c,d:r.d,e:r.e}))});
+  const old=same?s.rows:[];
+  const ord=L.filter(x=>pkSel.has(x.n)).map(x=>{const o=old.find(r=>r.n===x.n);return o?Object.assign(o,{c:x.c}):{n:x.n,c:x.c,d:'',e:''}});
+  s.rows=ord.concat(same?s.rows.filter(r=>!names.has(r.n)):[]);
+  s.cu=pkCu;s.gr=pkGr;s.upd=Date.now();save();render();$('#pkd').close();
 };
 const parseRows=t=>t.replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim()).map(l=>l.split(l.includes('\t')?'\t':',').map(x=>x.trim().replace(/^"(.*)"$/,'$1')));
 $('#csvin').onclick=()=>{$('#imt').value='';$('#imd').showModal()};
